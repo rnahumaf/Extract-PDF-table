@@ -1,8 +1,7 @@
-import tabula
-import pyperclip
+import pdfplumber
 import pandas as pd
 import tkinter as tk
-from tkinter import ttk, filedialog, simpledialog, messagebox
+from tkinter import ttk, filedialog, messagebox
 
 def extract_and_save():
     pdf_path = pdf_file_entry.get()
@@ -13,10 +12,13 @@ def extract_and_save():
 
     try:
         dfs = []
-        for page_num in range(start_page, end_page+1):
-            df = tabula.read_pdf(pdf_path, pages=page_num, multiple_tables=False)
-            dfs.extend(df)
-        
+        with pdfplumber.open(pdf_path) as pdf:
+            for page_num in range(start_page-1, end_page):  # pdfplumber uses zero-based index
+                page = pdf.pages[page_num]
+                table = page.extract_table()
+                df = pd.DataFrame(table[1:], columns=table[0])
+                dfs.append(df)
+
         final_df = pd.concat(dfs, ignore_index=True)
 
         if merge_adjacent:
@@ -28,7 +30,6 @@ def extract_and_save():
     except Exception as e:
         exception_text = str(e)
         messagebox.showerror("Error", exception_text)
-        pyperclip.copy(exception_text)
 
 root = tk.Tk()
 root.title("PDF to Excel Converter")
